@@ -4,7 +4,7 @@ Backup script.
 # How to use
 Specify 2 variable in backup.conf.sh (WORKING_DIR, BACKUP_DIR)  
 
-example.
+example.  
 WORKING_DIR=/folder/to/back/up  
 BACKUP_DIR=/back/up/folder
 
