@@ -76,7 +76,7 @@ function check_filesize() {
     local FILE_PATH=$1
     local retval=-1;
     if [ $(check_operating_system) == "Mac" ] ; then
-        retval=`du -sk ${FILE_PATH}`
+        retval=`du -sk ${FILE_PATH} | awk '{print $1}'`
     elif [ $(check_operating_system) == "Linux" ] ; then
         retval=`stat -c %s ${FILE_PATH}`
     fi
@@ -92,25 +92,25 @@ function load_conf_file() {
 function copy_file() {
     local LOCAL_COPYING_FILE=$1
     local LOCAL_BACKUP_FILE=$2
-    if [ ${#LOCAL_COPYING_FILE} -gt 0 -a ${#LOCAL_BACKUP_FILE} -gt 0 ] ; then
-        cp -f ${LOCAL_COPYING_FILE} ${LOCAL_BACKUP_FILE}
+    if [ "${#LOCAL_COPYING_FILE}" -gt 0 -a "${#LOCAL_BACKUP_FILE}" -gt 0 ] ; then
+        nohup cp -f ${LOCAL_COPYING_FILE} ${LOCAL_BACKUP_FILE} >/dev/null 2>&1
         echo "[INFO] copied file, ${LOCAL_COPYING_FILE}"
     else
         echo "[ERROR] internal system error. (inside copy file.)"
-        return -1;
+        exit;
     fi
 }
 
 function copy_folder() {
     local LOCAL_COPYING_FOLDER=$1
     local LOCAL_BACKUP_FOLDER=$2
-    if [ ${#LOCAL_COPYING_FOLDER} -gt 0 -a ${#LOCAL_BACKUP_FOLDER} -gt 0 ] ; then
+    if [ "${#LOCAL_COPYING_FOLDER}" -gt 0 -a "${#LOCAL_BACKUP_FOLDER}" -gt 0 ] ; then
         local LOCAL_PARENT_DIRECTORY=${LOCAL_BACKUP_FOLDER%/*}
-        cp -r ${LOCAL_COPYING_FOLDER} ${LOCAL_PARENT_DIRECTORY}
+        nohup cp -r ${LOCAL_COPYING_FOLDER} ${LOCAL_PARENT_DIRECTORY} >/dev/null 2>&1
         echo "[INFO] copied folder, ${LOCAL_COPYING_FOLDER}"
     else
         echo "[ERROR] internal system error.(inside copy folder.)"
-        return -1;
+        exit;
     fi
 }
 
@@ -121,22 +121,18 @@ function check_copying_file() {
 	LOCAL_BACKUP_FILE="${LOCAL_COPYING_FILE/${WORKING_DIR}/${BACKUP_DIR}}"
 	if [ "${#LOCAL_BACKUP_FILE}" -eq 0 ] ; then
 	    echo "[WARN] internal system error."
-	    return 1;
+            exit;
 	elif [ `file_exist ${LOCAL_BACKUP_FILE}` -eq 1 ] ; then
             copy_file ${LOCAL_COPYING_FILE} ${LOCAL_BACKUP_FILE}
 	elif [ `file_exist ${LOCAL_BACKUP_FILE}` -eq 0 ] ; then
             local WORKING_TIMESTAMP=$(check_timestamp ${LOCAL_COPYING_FILE})
             local BACKUP_TIMESTAMP=$(check_timestamp ${LOCAL_BACKUP_FILE})
-            if [ ${WORKING_TIMESTAMP} -eq ${BACKUP_TIMESTAMP} ] ; then
-                local WORKING_FILESIZE=$(check_filesize ${LOCAL_COPYING_FILE})
-                local BACKUP_FILESIZE=$(check_filesize ${LOCAL_BACKUP_FILE})
-                if [ ${WORKING_FILESIZE} -eq ${BACKUP_FILESIZE} ] ; then
-                    echo "${LOCAL_COPYING_FILE} already backed up."
-                elif [ ${WORKING_FILESIZE} -gt ${BACKUP_FILESIZE} ] ; then
-                    copy_file ${LOCAL_COPYING_FILE} ${LOCAL_BACKUP_FILE}
-                fi
-            elif [ ${WORKING_TIMESTAMP} -gt ${BACKUP_TIMESTAMP} ] ; then
+            local WORKING_FILESIZE=$(check_filesize ${LOCAL_COPYING_FILE})
+            local BACKUP_FILESIZE=$(check_filesize ${LOCAL_BACKUP_FILE})
+            if [ "${WORKING_TIMESTAMP}" -gt "${BACKUP_TIMESTAMP}" -o "${WORKING_FILESIZE}" -ne "${BACKUP_FILESIZE}" ] ; then
                 copy_file ${LOCAL_COPYING_FILE} ${LOCAL_BACKUP_FILE}
+            else
+                echo "[INFO] up to date, ${LOCAL_COPYING_FILE} "
             fi
         else
             echo "[ERROR] could not copy ${LOCAL_COPYING_FILE}"
@@ -151,7 +147,7 @@ function check_copying_folder() {
         LOCAL_BACKUP_FOLDER="${LOCAL_COPYING_FOLDER/${WORKING_DIR}/${BACKUP_DIR}}"
         if [ "${#LOCAL_BACKUP_FOLDER}" -eq 0 ] ; then
             echo "[WARN] internal system error."
-            return 1;
+            exit;
         elif [ `folder_exist ${LOCAL_BACKUP_FOLDER}` -eq 1 ] ; then
             copy_folder ${LOCAL_COPYING_FOLDER} ${LOCAL_BACKUP_FOLDER}
         elif [ `folder_exist ${LOCAL_BACKUP_FOLDER}` -eq 0 ] ; then
@@ -171,7 +167,7 @@ function backup() {
     echo "[INFO] begin sync."
     if [ "${#WORKING_DIR}" -eq 0 -o "${#BACKUP_DIR}" -eq 0 ] ; then
         echo "[ERROR] internal system error."
-        return 1;
+        exit;
    fi
    check_copying_folder ${WORKING_DIR}
    echo "[INFO] end sync."
@@ -179,9 +175,9 @@ function backup() {
 
 function load_and_validate_conf() {
     local LOCAL_CONF_PATH=$1
-    if [ ${#LOCAL_CONF_PATH} -eq 0 ] ; then
+    if [ "${#LOCAL_CONF_PATH}" -eq 0 ] ; then
         echo "[ERROR] internal system error."
-        return 1;
+        exit;
     fi
     if [ `file_exist "${LOCAL_CONF_PATH}"` -eq 0 ] ; then
         load_conf_file
