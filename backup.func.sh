@@ -172,18 +172,9 @@ function backup() {
     if [ "${#WORKING_DIR}" -eq 0 -o "${#BACKUP_DIR}" -eq 0 ] ; then
         echo "[ERROR] internal system error."
         return 1;
-    fi
-    for file_or_directory in ${WORKING_DIR}/*
-    do
-	if [ -f "$file_or_directory" ] ; then
-            check_copying_file ${file_or_directory}
-	elif [ -d "$file_or_directory" ] ; then
-            check_copying_folder ${file_or_directory}
-	else
-	    echo "unimplemented.(inside backup.)"
-	fi
-    done
-    echo "[INFO] end sync."
+   fi
+   check_copying_folder ${WORKING_DIR}
+   echo "[INFO] end sync."
 }
 
 function load_and_validate_conf() {
